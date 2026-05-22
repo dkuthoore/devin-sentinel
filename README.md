@@ -5,6 +5,10 @@
 
 Sentinel is an automated CVE remediation tool for Apache Superset. Devin automatically runs a  `pip-audit` on any activity on the main/master branch, creates structured GitHub issues per CVE, dispatches Devin remediation sessions, and tracks progress from audit to pull request in a live dashboard.
 
+<img width="1460" height="770" alt="Screenshot 2026-05-22 at 6 16 06 PM" src="https://github.com/user-attachments/assets/5eadf49f-091b-4399-ab15-bf9ed4ec5cbc" />
+
+
+
 ## Architecture
 
 ```mermaid
