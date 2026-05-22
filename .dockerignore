@@ -1,0 +1,24 @@
+# Secrets and local config — never bake into the image (use compose env_file at runtime)
+.env
+.env.*
+!.env.example
+
+# Python / tooling
+.venv/
+.uv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Runtime and test databases
+*.db
+test_sentinel.db
+
+# OS / editor
+.DS_Store
+.git/
+.gitignore

@@ -1,0 +1,1149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sentinel CVE Remediation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Saira+Condensed:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+      :root {
+        --font-display: "Saira Condensed", "Arial Narrow", sans-serif;
+        --font-body: "IBM Plex Sans", ui-sans-serif, sans-serif;
+        --color-void: #070908;
+        --color-panel: #101614;
+        --color-panel-strong: #15201d;
+        --color-card: rgba(20, 31, 28, 0.82);
+        --color-line: rgba(171, 255, 218, 0.16);
+        --color-ink: #ecfff6;
+        --color-muted: #8da49a;
+        --color-accent: #9cffc7;
+        --color-blue: #80b7ff;
+        --color-yellow: #ffd36e;
+        --color-red: #ff7272;
+        --color-green: #5dff9b;
+        --shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.45);
+        --radius-lg: 28px;
+        --radius-md: 18px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        min-height: 100%;
+        margin: 0;
+        overflow-x: clip;
+        background: linear-gradient(180deg, #070908 0%, #0b1110 100%);
+        color: var(--color-ink);
+        font-family: var(--font-body);
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        opacity: 0.35;
+        background-image:
+          linear-gradient(rgba(156, 255, 199, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(156, 255, 199, 0.04) 1px, transparent 1px);
+        background-size: 44px 44px;
+        mask-image: radial-gradient(circle at center, black, transparent 78%);
+      }
+
+      a {
+        color: inherit;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .shell {
+        width: min(1440px, calc(100vw - 32px));
+        margin: 0 auto;
+        padding: 28px 0 44px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .mark {
+        width: 44px;
+        height: 44px;
+        border: 1px solid var(--color-line);
+        border-radius: 14px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(145deg, rgba(156, 255, 199, 0.18), rgba(128, 183, 255, 0.05));
+        box-shadow: inset 0 0 24px rgba(156, 255, 199, 0.08);
+      }
+
+      .mark::before {
+        content: "";
+        width: 18px;
+        height: 18px;
+        border: 2px solid var(--color-accent);
+        border-radius: 50%;
+        box-shadow: 0 0 22px rgba(156, 255, 199, 0.55);
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: clamp(2rem, 5vw, 4.7rem);
+        line-height: 0.9;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+      }
+
+      .brand p,
+      .subcopy,
+      .muted {
+        color: var(--color-muted);
+      }
+
+      .brand p {
+        margin: 4px 0 0;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .button {
+        border: 1px solid var(--color-line);
+        border-radius: 999px;
+        color: var(--color-ink);
+        background: rgba(255, 255, 255, 0.03);
+        padding: 11px 16px;
+        cursor: pointer;
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease,
+          background 180ms ease;
+      }
+
+      .button.primary {
+        background: var(--color-accent);
+        color: #06110b;
+        border-color: transparent;
+        font-weight: 700;
+      }
+
+      .button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(156, 255, 199, 0.6);
+      }
+
+      .button:disabled {
+        opacity: 0.5;
+        cursor: wait;
+        transform: none;
+      }
+
+      .monitor-bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 10px 18px;
+        padding: 12px 16px;
+        margin-bottom: 14px;
+        border: 1px solid var(--color-line);
+        border-radius: var(--radius-md);
+        background: rgba(16, 22, 20, 0.75);
+        transition: box-shadow 0.35s ease, border-color 0.35s ease;
+      }
+
+      .monitor-bar.event-flash {
+        border-color: rgba(156, 255, 199, 0.45);
+        box-shadow: 0 0 28px rgba(156, 255, 199, 0.12);
+      }
+
+      .monitor-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.82rem;
+        color: var(--color-muted);
+      }
+
+      .monitor-item strong {
+        color: var(--color-ink);
+        font-weight: 600;
+      }
+
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--color-muted);
+        flex-shrink: 0;
+      }
+
+      .live-dot.on {
+        background: var(--color-green);
+        box-shadow: 0 0 10px var(--color-green);
+        animation: live-pulse 1.8s ease-in-out infinite;
+      }
+
+      .live-dot.warn {
+        background: var(--color-yellow);
+        box-shadow: 0 0 8px var(--color-yellow);
+        animation: live-pulse 1.2s ease-in-out infinite;
+      }
+
+      @keyframes live-pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.25);
+          opacity: 0.75;
+        }
+      }
+
+      .monitor-divider {
+        width: 1px;
+        height: 18px;
+        background: var(--color-line);
+      }
+
+      .activity-feed {
+        flex: 1 1 220px;
+        min-width: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+      }
+
+      .activity-feed-label {
+        flex-shrink: 0;
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-muted);
+      }
+
+      .activity-ticker {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+      }
+
+      .activity-ticker::-webkit-scrollbar {
+        display: none;
+      }
+
+      .activity-chip {
+        flex-shrink: 0;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-family: var(--font-mono, ui-monospace, monospace);
+        color: #b8e8d0;
+        background: rgba(156, 255, 199, 0.08);
+        border: 1px solid rgba(156, 255, 199, 0.18);
+        animation: chip-in 0.4s ease;
+      }
+
+      @keyframes chip-in {
+        from {
+          opacity: 0;
+          transform: translateX(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .metric,
+      .table-panel {
+        border: 1px solid var(--color-line);
+        background: var(--color-card);
+        backdrop-filter: blur(20px);
+        box-shadow: 0 16px 60px rgba(0, 0, 0, 0.24);
+      }
+
+      .metric {
+        border-radius: 12px;
+        padding: 10px 12px;
+        min-height: 72px;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .metric::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(156, 255, 199, 0.06), transparent);
+        transform: translateX(-100%);
+        pointer-events: none;
+      }
+
+      .metric.tick::after {
+        animation: metric-sweep 0.7s ease;
+      }
+
+      @keyframes metric-sweep {
+        to {
+          transform: translateX(100%);
+        }
+      }
+
+      .metric .label {
+        color: var(--color-muted);
+        font-size: 0.62rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        line-height: 1.2;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .metric .value {
+        margin-top: 6px;
+        font-family: var(--font-display);
+        font-size: clamp(1.25rem, 2vw, 1.75rem);
+        line-height: 0.9;
+        font-variant-numeric: tabular-nums;
+        transition: color 0.2s ease;
+      }
+
+      .metric .value.changed {
+        color: var(--color-accent);
+      }
+
+      .table-panel {
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 22px;
+        border-bottom: 1px solid var(--color-line);
+      }
+
+      .panel-head h3 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 1.35rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+
+      .scanline {
+        height: 2px;
+        margin: -1px 0 0;
+        background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+        background-size: 200% 100%;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+
+      .scanline.active {
+        opacity: 0.55;
+        animation: scan 1.2s linear infinite;
+      }
+
+      @keyframes scan {
+        from {
+          background-position: 200% 0;
+        }
+        to {
+          background-position: -200% 0;
+        }
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+      }
+
+      th,
+      td {
+        padding: 16px 18px;
+        text-align: left;
+        border-bottom: 1px solid rgba(171, 255, 218, 0.1);
+      }
+
+      th {
+        color: var(--color-muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-weight: 600;
+      }
+
+      td {
+        color: #def4eb;
+        vertical-align: middle;
+      }
+
+      tr:hover td {
+        background: rgba(156, 255, 199, 0.035);
+      }
+
+      .package {
+        font-weight: 700;
+      }
+
+      .cve {
+        font-family: var(--font-display);
+        letter-spacing: 0.04em;
+        font-size: 1.2rem;
+      }
+
+      .work-item-cell {
+        max-width: 320px;
+      }
+
+      .work-item-detail {
+        margin-top: 6px;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        color: var(--color-muted);
+      }
+
+      .work-item-detail.blocked {
+        color: #ffb4a8;
+      }
+
+      .work-item-summary {
+        display: block;
+        margin-bottom: 6px;
+      }
+
+      .finding-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .finding-tag {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 6px;
+        padding: 3px 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #c8f5dd;
+        background: rgba(156, 255, 199, 0.1);
+        border: 1px solid rgba(156, 255, 199, 0.22);
+        font-family: var(--font-mono, ui-monospace, monospace);
+      }
+
+      td.links {
+        white-space: nowrap;
+      }
+
+      td.elapsed {
+        font-variant-numeric: tabular-nums;
+        font-family: var(--font-mono, ui-monospace, monospace);
+        font-size: 0.9rem;
+        color: #c8f5dd;
+      }
+
+      tr.row-live td {
+        background: rgba(128, 183, 255, 0.04);
+      }
+
+      tr.row-live td:first-child {
+        box-shadow: inset 3px 0 0 var(--color-blue);
+        animation: row-glow 2.4s ease-in-out infinite;
+      }
+
+      tr.row-live:hover td {
+        background: rgba(128, 183, 255, 0.07);
+      }
+
+      @keyframes row-glow {
+        0%,
+        100% {
+          box-shadow: inset 3px 0 0 rgba(128, 183, 255, 0.55);
+        }
+        50% {
+          box-shadow: inset 3px 0 0 rgba(128, 183, 255, 1);
+        }
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 7px 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border: 1px solid currentColor;
+      }
+
+      .badge::before {
+        content: "";
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 12px currentColor;
+      }
+
+      .pending {
+        color: var(--color-muted);
+      }
+
+      .audit_running,
+      .in_progress {
+        color: var(--color-blue);
+      }
+
+      .issue_created,
+      .pr_opened,
+      .merged {
+        color: var(--color-green);
+      }
+
+      .failed {
+        color: var(--color-red);
+      }
+
+      .badge.live {
+        animation: badge-pulse 2s ease-in-out infinite;
+      }
+
+      .badge.live::before {
+        animation: dot-pulse 2s ease-in-out infinite;
+      }
+
+      @keyframes badge-pulse {
+        0%,
+        100% {
+          opacity: 1;
+          box-shadow: 0 0 0 0 rgba(128, 183, 255, 0);
+        }
+        50% {
+          opacity: 0.9;
+          box-shadow: 0 0 14px 2px rgba(128, 183, 255, 0.28);
+        }
+      }
+
+      @keyframes dot-pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          box-shadow: 0 0 10px currentColor;
+        }
+        50% {
+          transform: scale(1.2);
+          box-shadow: 0 0 16px currentColor;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .badge.live,
+        .badge.live::before,
+        .live-dot.on,
+        .live-dot.warn,
+        .scanline.active,
+        .metric.tick::after,
+        tr.row-live td:first-child {
+          animation: none;
+        }
+      }
+
+      .link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--color-accent);
+        text-decoration: none;
+        border-bottom: 1px solid rgba(156, 255, 199, 0.35);
+      }
+
+      .empty {
+        padding: 52px 22px;
+        text-align: center;
+        color: var(--color-muted);
+      }
+
+      .footer-note {
+        margin-top: 18px;
+        color: var(--color-muted);
+        font-size: 0.9rem;
+        text-align: right;
+      }
+
+      @media (max-width: 980px) {
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .monitor-divider {
+          display: none;
+        }
+
+        .actions {
+          justify-content: flex-start;
+        }
+
+        .metrics {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 620px) {
+        .shell {
+          width: min(100vw - 20px, 1440px);
+          padding-top: 16px;
+        }
+
+        .table-panel {
+          border-radius: 20px;
+        }
+
+        .metrics {
+          grid-template-columns: 1fr;
+        }
+
+        .panel-head {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .button {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel">
+      const { useEffect, useMemo, useState } = React;
+
+      const statusLabel = {
+        pending: "Pending",
+        audit_running: "Audit Running",
+        issue_created: "Issues Created",
+        in_progress: "Fix In Progress",
+        pr_opened: "PR Opened",
+        merged: "Merged",
+        failed: "Failed",
+      };
+
+      const LIVE_STATUSES = new Set(["audit_running", "in_progress"]);
+
+      function formatElapsed(start, end, now) {
+        if (!start) return "—";
+        const from = new Date(start).getTime();
+        const to = end ? new Date(end).getTime() : now;
+        let totalSeconds = Math.max(0, Math.floor((to - from) / 1000));
+        const hours = Math.floor(totalSeconds / 3600);
+        totalSeconds %= 3600;
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const pad = (n) => String(n).padStart(2, "0");
+
+        if (hours > 0) {
+          return `${hours}h ${pad(minutes)}m ${pad(seconds)}s`;
+        }
+        if (minutes > 0) {
+          return `${minutes}m ${pad(seconds)}s`;
+        }
+        return `${seconds}s`;
+      }
+
+      function shortLink(url, fallback) {
+        if (!url) return <span className="muted">—</span>;
+        return (
+          <a className="link" href={url} target="_blank" rel="noreferrer">
+            {fallback}
+          </a>
+        );
+      }
+
+      function truncate(text, max = 100) {
+        if (!text || text.length <= max) return text || "";
+        return `${text.slice(0, max - 1)}…`;
+      }
+
+      function parseAuditFindings(message) {
+        if (!message) return null;
+        const match = message.match(/AUDIT_DONE:\s*(\[[\s\S]*\])/i);
+        if (!match) return null;
+        try {
+          let payload = match[1].trim();
+          if (payload.startsWith("```")) payload = payload.replace(/```/g, "").trim();
+          const data = JSON.parse(payload);
+          return Array.isArray(data) ? data : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function workItemTitle(session) {
+        if (session.session_type === "audit") return "Devin audit";
+        return session.cve_id || "Remediation";
+      }
+
+      function packageLabel(session) {
+        if (session.package) return session.package;
+        if (session.session_type === "audit") {
+          const findings = parseAuditFindings(session.last_message);
+          if (findings?.length) return findings.map((f) => f.package).join(", ");
+          return "All dependencies";
+        }
+        return "—";
+      }
+
+      function versionLabel(session) {
+        if (session.current_version && session.fix_version) {
+          return `${session.current_version} → ${session.fix_version}`;
+        }
+        if (session.session_type === "audit") {
+          const findings = parseAuditFindings(session.last_message);
+          if (findings?.length) return `${findings.length} packages`;
+        }
+        return "—";
+      }
+
+      function auditDispatchFailed(message) {
+        const match = (message || "").match(/failed=(\d+)/i);
+        return match && Number(match[1]) > 0;
+      }
+
+      function WorkItemDetail({ session }) {
+        if (session.error_message) {
+          return <div className="work-item-detail blocked">{truncate(session.error_message, 200)}</div>;
+        }
+
+        if (session.status === "failed") {
+          const detail = session.last_message || "Devin or dispatch failed.";
+          return <div className="work-item-detail blocked">{truncate(detail, 200)}</div>;
+        }
+
+        const message = session.last_message || "";
+        const findings = parseAuditFindings(message);
+
+        if (findings?.length) {
+          return (
+            <div className="work-item-detail">
+              <span className="work-item-summary">
+                {findings.length} CVE{findings.length === 1 ? "" : "s"} triaged · issues filed
+              </span>
+              <div className="finding-tags">
+                {findings.map((finding) => (
+                  <span className="finding-tag" key={finding.cve_id || finding.package} title={finding.cve_id}>
+                    {finding.package}
+                  </span>
+                ))}
+              </div>
+            </div>
+          );
+        }
+
+        if (/^DONE:\s*/i.test(message)) {
+          return <span className="work-item-detail">Fix complete — open PR in the last column</span>;
+        }
+
+        if (/^BLOCKED:\s*/i.test(message)) {
+          return (
+            <div className="work-item-detail blocked">
+              Blocked: {truncate(message.replace(/^BLOCKED:\s*/i, ""), 100)}
+            </div>
+          );
+        }
+
+        if (session.status === "pr_opened") {
+          return <span className="work-item-detail">PR open on GitHub — waiting for merge</span>;
+        }
+
+        if (session.status === "audit_running" || session.status === "in_progress") {
+          return <span className="work-item-detail">Devin session in progress…</span>;
+        }
+
+        if (session.status === "issue_created" && session.session_type === "audit") {
+          if (auditDispatchFailed(message)) {
+            return (
+              <div className="work-item-detail blocked">
+                Audit finished — some remediations failed to start (see error above or failed rows)
+              </div>
+            );
+          }
+          return <span className="work-item-detail">Audit finished — remediation sessions dispatched</span>;
+        }
+
+        if (!message || message === "—") {
+          return <span className="muted">—</span>;
+        }
+
+        return <div className="work-item-detail">{truncate(message.replace(/\s+/g, " "), 90)}</div>;
+      }
+
+      function eventLabel(type) {
+        const labels = {
+          connected: "SSE connected",
+          session_update: "Session sync",
+        };
+        return labels[type] || type.replace(/_/g, " ");
+      }
+
+      function App() {
+        const [sessions, setSessions] = useState([]);
+        const [metrics, setMetrics] = useState(null);
+        const [loading, setLoading] = useState(false);
+        const [refreshing, setRefreshing] = useState(false);
+        const [lastUpdated, setLastUpdated] = useState(null);
+        const [error, setError] = useState("");
+        const [now, setNow] = useState(Date.now());
+        const [sseLive, setSseLive] = useState(false);
+        const [eventFlash, setEventFlash] = useState(false);
+        const [recentEvents, setRecentEvents] = useState([]);
+        const eventSeqRef = React.useRef(0);
+        const [metricTicks, setMetricTicks] = useState({});
+        const [changedMetrics, setChangedMetrics] = useState({});
+        const prevMetricsRef = React.useRef(null);
+
+        useEffect(() => {
+          const tick = setInterval(() => setNow(Date.now()), 1000);
+          return () => clearInterval(tick);
+        }, []);
+
+        function recordEvent(type) {
+          const at = new Date();
+          eventSeqRef.current += 1;
+          const id = `${at.getTime()}-${type}-${eventSeqRef.current}`;
+          setRecentEvents((prev) => [{ id, type, at }, ...prev].slice(0, 12));
+          setEventFlash(true);
+          window.setTimeout(() => setEventFlash(false), 500);
+        }
+
+        async function refresh({ silent = false } = {}) {
+          if (!silent) setRefreshing(true);
+          try {
+            const [sessionRes, metricsRes] = await Promise.all([fetch("/sessions"), fetch("/metrics")]);
+            if (!sessionRes.ok || !metricsRes.ok) throw new Error("Could not load Sentinel state");
+            const nextSessions = await sessionRes.json();
+            const nextMetrics = await metricsRes.json();
+            const prev = prevMetricsRef.current;
+            if (prev) {
+              const keys = [
+                "total_cves_detected",
+                "issues_created",
+                "devin_sessions",
+                "prs_opened",
+                "avg_resolution_minutes",
+              ];
+              const ticks = {};
+              const changed = {};
+              keys.forEach((key) => {
+                if (prev[key] !== nextMetrics[key]) {
+                  ticks[key] = true;
+                  changed[key] = true;
+                }
+              });
+              if (Object.keys(ticks).length) {
+                setMetricTicks((m) => ({ ...m, ...ticks }));
+                setChangedMetrics((m) => ({ ...m, ...changed }));
+                window.setTimeout(() => {
+                  setMetricTicks((m) => {
+                    const next = { ...m };
+                    Object.keys(ticks).forEach((k) => delete next[k]);
+                    return next;
+                  });
+                  setChangedMetrics((m) => {
+                    const next = { ...m };
+                    Object.keys(changed).forEach((k) => delete next[k]);
+                    return next;
+                  });
+                }, 900);
+              }
+            }
+            prevMetricsRef.current = nextMetrics;
+            setSessions(nextSessions);
+            setMetrics(nextMetrics);
+            setLastUpdated(new Date());
+          } finally {
+            if (!silent) setRefreshing(false);
+          }
+        }
+
+        async function trigger(path) {
+          setLoading(true);
+          setError("");
+          try {
+            const response = await fetch(path, { method: "POST" });
+            if (!response.ok) throw new Error(await response.text());
+            await refresh();
+          } catch (err) {
+            setError(err.message);
+          } finally {
+            setLoading(false);
+          }
+        }
+
+        const hasActiveSessions = useMemo(
+          () =>
+            sessions.some(
+              (s) => s.status === "audit_running" || s.status === "in_progress" || s.status === "pr_opened"
+            ),
+          [sessions]
+        );
+
+        useEffect(() => {
+          const source = new EventSource("/events");
+          source.onopen = () => setSseLive(true);
+          source.onmessage = (event) => {
+            try {
+              const data = JSON.parse(event.data);
+              recordEvent(data.type || "session_update");
+            } catch {
+              recordEvent("session_update");
+            }
+            refresh({ silent: true }).catch((err) => setError(err.message));
+          };
+          source.onerror = () => setSseLive(false);
+          return () => source.close();
+        }, []);
+
+        useEffect(() => {
+          refresh().catch((err) => setError(err.message));
+          const intervalMs = sseLive
+            ? hasActiveSessions
+              ? 15000
+              : 30000
+            : hasActiveSessions
+              ? 3000
+              : 10000;
+          const timer = setInterval(() => refresh().catch((err) => setError(err.message)), intervalMs);
+          return () => clearInterval(timer);
+        }, [hasActiveSessions, sseLive]);
+
+        const visibleSessions = useMemo(() => sessions, [sessions]);
+        const activeCount = useMemo(
+          () => sessions.filter((s) => LIVE_STATUSES.has(s.status)).length,
+          [sessions]
+        );
+        const pollMode = sseLive ? (hasActiveSessions ? "SSE + 15s backup" : "SSE + 30s backup") : hasActiveSessions ? "3s poll" : "10s poll";
+
+        const cards = [
+          { label: "Detected", key: "total_cves_detected", value: metrics?.total_cves_detected ?? 0 },
+          { label: "Issues", key: "issues_created", value: metrics?.issues_created ?? 0 },
+          { label: "Devin", key: "devin_sessions", value: metrics?.devin_sessions ?? 0 },
+          { label: "Failed", key: "failed", value: metrics?.failed ?? 0 },
+          { label: "PRs", key: "prs_opened", value: metrics?.prs_opened ?? 0 },
+          {
+            label: "MTTR",
+            key: "avg_resolution_minutes",
+            value: metrics?.avg_resolution_minutes ? `${metrics.avg_resolution_minutes}m` : "—",
+          },
+        ];
+
+        return (
+          <main className="shell">
+            <nav className="topbar">
+              <div className="brand">
+                <div className="mark" aria-hidden="true"></div>
+                <div>
+                  <h1>Sentinel</h1>
+                  <p>Autonomous CVE triage and remediation for Apache Superset.</p>
+                </div>
+              </div>
+              <div className="actions">
+                <button className="button primary" disabled={loading} onClick={() => trigger("/scan/devin")}>
+                  Ask Devin To Audit
+                </button>
+              </div>
+            </nav>
+
+            <section className={`monitor-bar${eventFlash ? " event-flash" : ""}`} aria-label="Live monitoring">
+              <div className="monitor-item">
+                <span className={`live-dot ${sseLive ? "on" : "warn"}`} aria-hidden="true"></span>
+                <span>
+                  {sseLive ? (
+                    <>
+                      <strong>Live</strong> · SSE /events
+                    </>
+                  ) : (
+                    <>
+                      <strong>Reconnecting</strong> · SSE offline
+                    </>
+                  )}
+                </span>
+              </div>
+              <span className="monitor-divider" aria-hidden="true"></span>
+              <div className="monitor-item">
+                <span>
+                  GitHub <strong>PR poller</strong>
+                </span>
+              </div>
+              <span className="monitor-divider" aria-hidden="true"></span>
+              <div className="monitor-item">
+                <span>
+                  Sync <strong>{pollMode}</strong>
+                </span>
+              </div>
+              <span className="monitor-divider" aria-hidden="true"></span>
+              <div className="monitor-item">
+                <span>
+                  Active <strong>{activeCount}</strong>
+                  {refreshing ? " · syncing…" : lastUpdated ? ` · ${lastUpdated.toLocaleTimeString()}` : ""}
+                </span>
+              </div>
+              <div className="activity-feed">
+                <span className="activity-feed-label">Events</span>
+                <div className="activity-ticker" aria-live="polite">
+                  {recentEvents.length === 0 ? (
+                    <span className="activity-chip">Waiting for stream…</span>
+                  ) : (
+                    recentEvents.map((evt) => (
+                      <span className="activity-chip" key={evt.id}>
+                        {eventLabel(evt.type)} · {evt.at.toLocaleTimeString()}
+                      </span>
+                    ))
+                  )}
+                </div>
+              </div>
+            </section>
+
+            <section className="metrics" aria-label="Metrics">
+              {cards.map((card) => (
+                <div className={`metric${metricTicks[card.key] ? " tick" : ""}`} key={card.key}>
+                  <div className="label">{card.label}</div>
+                  <div className={`value${changedMetrics[card.key] ? " changed" : ""}`}>{card.value}</div>
+                </div>
+              ))}
+            </section>
+
+            <section className="table-panel">
+              <div className={`scanline${refreshing || eventFlash || hasActiveSessions ? " active" : ""}`} aria-hidden="true"></div>
+              <div className="panel-head">
+                <div>
+                  <h3>Sessions</h3>
+                  <div className="muted">
+                    {visibleSessions.length} total
+                    {hasActiveSessions ? ` · ${activeCount} in flight` : ""}
+                  </div>
+                </div>
+                {error ? (
+                  <div className="badge failed">{error}</div>
+                ) : (
+                  <div className={`badge ${sseLive ? "in_progress live" : "pending"}`}>
+                    {sseLive ? "Live" : "Offline"}
+                  </div>
+                )}
+              </div>
+
+              {visibleSessions.length === 0 ? (
+                <div className="empty">
+                  No sessions yet. Push to <strong>master</strong> on your fork (with push poll enabled) or click{" "}
+                  <strong>Ask Devin To Audit</strong> to start the pipeline.
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Work Item</th>
+                        <th>Package</th>
+                        <th>Version</th>
+                        <th>Status</th>
+                        <th>Issue</th>
+                        <th>Devin</th>
+                        <th>PR</th>
+                        <th>Elapsed</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleSessions.map((session) => {
+                        const isLive =
+                          LIVE_STATUSES.has(session.status) && session.status !== "failed";
+                        return (
+                          <tr key={session.id} className={isLive ? "row-live" : undefined}>
+                            <td className="work-item-cell">
+                              <div className="cve">{workItemTitle(session)}</div>
+                              <WorkItemDetail session={session} />
+                            </td>
+                            <td className="package">{packageLabel(session)}</td>
+                            <td>{versionLabel(session)}</td>
+                            <td>
+                              <span className={`badge ${session.status}${isLive ? " live" : ""}`}>
+                                {statusLabel[session.status] || session.status}
+                              </span>
+                            </td>
+                            <td className="links">
+                              {shortLink(session.github_issue_url, session.github_issue_number ? `#${session.github_issue_number}` : "Issue")}
+                            </td>
+                            <td className="links">{shortLink(session.devin_session_url, "Session")}</td>
+                            <td className="links">
+                              {shortLink(session.github_pr_url, session.github_pr_number ? `#${session.github_pr_number}` : "PR")}
+                            </td>
+                            <td className="elapsed">{formatElapsed(session.created_at, session.completed_at, now)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+
+          </main>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>

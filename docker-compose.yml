@@ -1,0 +1,16 @@
+services:
+  sentinel:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////app/data/sentinel.db}
+    volumes:
+      - sentinel_data:/app/data
+    restart: unless-stopped
+
+volumes:
+  sentinel_data:
